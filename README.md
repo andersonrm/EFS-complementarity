@@ -4,12 +4,14 @@
 
 This repo contains the data and code used in Hennessy et al.
 
-Data are stored in /data
-Analyses are stored in /analyses
+* Data are stored in /data
+* Analyses are stored in /analyses
 
-EFS-complementarity: main models used in the statistical analyses
-EFS-complementarity-interference: models
-EFS-complementarity-results: code to generate figures from analyses
+Markdown descriptions:
+
+* EFS-complementarity: main models used in the statistical analyses
+* EFS-complementarity-interference: models
+* EFS-complementarity-results: code to generate figures from analyses
 
 Correspondence:
 
