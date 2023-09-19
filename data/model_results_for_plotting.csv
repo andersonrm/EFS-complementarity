@@ -1,0 +1,13 @@
+Model,Response,Risk,Predictor,Log_Odds,CI_low,CI_high,P_value,N_obs
+Model1,All,Bird,Bird,-0.231158,-0.562786391,0.1109106,0.190472,52
+Model2,Tachinid,Bird,Bird,-7.19E-01,-1.5654836,1.21E-01,0.1013,52
+Model3,Hymenopteran,Bird,Bird,-0.40595,-0.7703552,-2.86E-02,0.0418,52
+Model4,All,Ant,Ant,0.24303,-0.5519245,1.08E+00,0.56421,46
+Model5,Tachinid,Ant,Ant,1.2775,-3.38E-01,2.97E+00,0.144681,46
+Model6,Hymenopteran,Ant,Ant,-1.63E-01,-0.9564629,6.63E-01,0.695982,46
+Model7,All,Both,Bird,-0.43911,-0.96889003,0.10299191,0.129545,39
+Model7,All,Both,Ant,0.4253,-0.29847258,1.17082122,0.274428,39
+Model8,Tachinid,Both,Bird,-1.5462,-2.17E+00,-9.25E-01,0.00024,39
+Model8,Tachinid,Both,Ant,1.2986,4.72E-01,2.16E+00,0.009141,39
+Model9,Hymenopteran,Both,Bird,-2.85E-01,-0.8079492,0.2473686,0.30715,39
+Model9,Hymenopteran,Both,Ant,8.33E-03,-0.7151719,0.7451676,0.98242,39

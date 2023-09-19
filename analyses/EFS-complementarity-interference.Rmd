@@ -1,0 +1,319 @@
+---
+title: "EFS drives enemy complementarity--interference"
+author: "Riley M. Anderson & Nora C. Mitchell"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+graphics: yes
+output:
+  github_document:
+    toc: yes
+    toc_depth: 5
+    pandoc_args: --webtex
+  html_document:
+    keep_md: yes
+    theme: readable
+    mathjax: default
+  html_notebook:
+    code_folding: hide
+    theme: readable
+    mathjax: default
+  pdf_document:
+    toc: yes
+header-includes:
+  \usepackage{float}
+  \floatplacement{figure}{H}
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include = F}
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+# @@@@@ Knitr Options
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+# Set root directory to the project directory
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+
+
+# Set default knitr options: 
+# Suppress warnings and messages, cache chunks, 
+#  set default figure size to 6x8 at 300 dpi, and save a png and pdf
+knitr::opts_chunk$set(warning = F, message = F, collapse = T, cache = T,
+    fig.height = 6, fig.width = 8, dpi = 300, # 6x8" @ 300dpi:1800x2400=4.3MP
+    dev = c('png', 'pdf'), dev.args = list(pdf = list(onefile = F)))
+
+```
+
+
+
+## Overview
+
+What is this analysis about?
+
+### Summary of Results
+* 
+
+```{r Main_Code, include = F, cache = F}
+
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+# @@@@@ Setup - This code is run, but output is hidden
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+# Load Packages
+library(tidyverse) # Needed for data wrangling: dplyr, tidyr, ggplot2
+library(cowplot) # Needed for publication-quality ggplots
+library(rsq)
+
+
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+# @@@@@ Data Preparation
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+# Import datasets
+data <- read.csv("data/para_pred_analyze.csv",
+                 header = TRUE,
+                 stringsAsFactors = TRUE,
+                 na.strings = ".")
+
+
+
+```
+
+
+```{r Data_Wrangling, echo = F, comment = ""}
+
+##########################################
+# birds
+
+data$Bird_treatment <- factor(data$Bird_treatment,
+                              levels = c("unbagged", "bagged"))
+
+
+# determine which combos of caterpillar and tree species have 5 or more observations
+# also remove any with ant treatment of tangle
+
+obs_limit = 5
+
+bird_combos <- data %>% 
+  filter(Ant_treatment != "tangle") %>% 
+  group_by(Caterpillar_species, Tree_species, Bird_treatment) %>% 
+  tally() %>% 
+  filter(n >= obs_limit) %>%
+  mutate(combo = paste(Caterpillar_species, "-", Tree_species))
+
+bird_combos_bag <- bird_combos %>% 
+  filter(Bird_treatment == "bagged")
+
+bird_combos_unbag <- bird_combos %>% 
+  filter(Bird_treatment == "unbagged")
+
+bird_combos_final <- merge(bird_combos_bag, bird_combos_unbag, by = "combo")
+
+
+# subset the data to meet above criteria
+bird <- data %>% 
+  filter(Ant_treatment != "tangle") %>% 
+  mutate(combo = paste(Caterpillar_species, "-", Tree_species)) %>% 
+  filter(combo %in% bird_combos_final$combo) %>%
+  group_by(Caterpillar_species, Tree_species, Bird_treatment) %>% 
+  summarize(Para = sum(Parasitized == "Y"),
+            Not_Para = sum(Parasitized == "N"),
+            H_Para = sum(Hym == "Y"),
+            Not_H = sum(Hym == "N"),
+            T_Para = sum(Tach == "Y"),
+            Not_T = sum(Tach == "N"))
+
+
+
+
+################################################
+# ants
+
+
+# figure out what combos of caterpillar and tree species have XX or more observations
+# also remove any with bird treatment of bagged
+
+## set observation limit
+
+#obs_limit = 15
+#obs_limit = 10
+#obs_limit = 8
+obs_limit = 5
+
+ant_combos <- data %>% 
+  filter(Bird_treatment != "bagged") %>% 
+  group_by(Caterpillar_species, Tree_species, Ant_treatment) %>% 
+  tally() %>% 
+  filter(n >= obs_limit) %>%
+  mutate(combo = paste(Caterpillar_species, "-", Tree_species))
+
+ant_combos_tang <- ant_combos %>% 
+  filter(Ant_treatment == "tangle")
+
+ant_combos_cont <- ant_combos %>% 
+  filter(Ant_treatment == "control")
+
+ant_combos_final <- merge(ant_combos_tang, ant_combos_cont, by = "combo")
+
+# subset the data to meet above criteria
+ant <- data %>% 
+  filter(Bird_treatment != "bagged") %>% 
+  mutate(combo = paste(Caterpillar_species, "-", Tree_species)) %>% 
+  filter(combo %in% ant_combos_final$combo) %>% # just those that have 15+ observations
+  group_by(Caterpillar_species, Tree_species, Ant_treatment) %>% 
+  summarize(Para = sum(Parasitized == "Y"),
+            Not_Para = sum(Parasitized == "N"),
+            H_Para = sum(Hym == "Y"),
+            Not_H = sum(Hym == "N"),
+            T_Para = sum(Tach == "Y"),
+            Not_T = sum(Tach == "N"))
+
+
+
+```
+
+
+```{r bird_mod_para_outcome, echo = F}
+
+# run model with Para as outcome (H, T, or unidentified)
+bird_mdl_both <- glm(cbind(Para, Not_Para) ~ Bird_treatment + Tree_species + Caterpillar_species,
+                  family = quasibinomial(),
+                  data = bird)
+summary(bird_mdl_both)
+confint(bird_mdl_both)
+rsq(bird_mdl_both, adj = TRUE, type = "v")
+plot(bird_mdl_both)
+
+
+
+ggplot(data = bird, aes(x = Bird_treatment, y = (Para/(Para + Not_Para)))) + 
+  geom_boxplot() + 
+  scale_color_manual(values = c("#E69F00")) +
+  geom_jitter() + theme_bw()
+
+```
+
+
+```{r bird_mod_tachinid_outcome, echo = F}
+
+# run with tachinid as outcome
+bird_mdl_tach <- glm(cbind(T_Para, Not_T) ~ Bird_treatment + Tree_species + Caterpillar_species,
+                     family = quasibinomial(),
+                     data = bird)
+summary(bird_mdl_tach)
+confint(bird_mdl_tach)
+rsq(bird_mdl_tach, adj = TRUE, type = "v")
+plot(bird_mdl_tach)
+
+ggplot(data = bird, aes(x = Bird_treatment, y = (T_Para/(T_Para + Not_T)))) + 
+  geom_boxplot() + 
+  geom_jitter() + theme_bw()
+
+```
+
+```{r bird_mod_hymenopteran_outcome, echo = F}
+
+# run with hymenopteran as outcome
+bird_mdl_hym <- glm(cbind(H_Para, Not_H) ~ Bird_treatment + Tree_species + Caterpillar_species,
+                     family = quasibinomial(),
+                     data = bird)
+summary(bird_mdl_hym)
+confint(bird_mdl_hym)
+rsq(bird_mdl_hym, adj = TRUE, type = "v")
+plot(bird_mdl_hym)
+
+ggplot(data = bird, aes(x = Bird_treatment, y = (H_Para/(H_Para + Not_H)))) + 
+  geom_boxplot() + 
+  geom_jitter() + theme_bw()
+
+```
+
+```{r ant_mod_para_outcome, echo = F}
+# run model with Para as outcome (H, T, or unidentified)
+ant_mdl_both <- glm(cbind(Para, Not_Para) ~ Ant_treatment + Tree_species + Caterpillar_species,
+                     family = quasibinomial(),
+                     data = ant)
+summary(ant_mdl_both)
+confint(ant_mdl_both)
+rsq(ant_mdl_both, adj = TRUE, type = "v")
+plot(ant_mdl_both)
+
+ggplot(data = ant, aes(x = Ant_treatment, y = (Para/(Para + Not_Para)))) + 
+  geom_boxplot() + 
+  geom_jitter() + theme_bw()
+
+
+
+```
+
+```{r ant_mod_tachinid_outcome, echo = F}
+
+
+# run model with tachnid as outcome
+ant_mdl_tach <- glm(cbind(T_Para, Not_T) ~ Ant_treatment + Tree_species + Caterpillar_species,
+                     family = quasibinomial(),
+                     data = ant)
+summary(ant_mdl_tach)
+confint(ant_mdl_tach)
+rsq(ant_mdl_tach, adj = TRUE, type = "v")
+plot(ant_mdl_tach)
+
+ggplot(data = ant, aes(x = Ant_treatment, y = (T_Para/(T_Para + Not_T)))) + 
+  geom_boxplot() + 
+  geom_jitter() + theme_bw()
+
+
+
+```
+
+```{r ant_mod_hymenoptera_outcome, echo = F}
+
+
+# run model with hymenopteran as outcome
+ant_mdl_hym <- glm(cbind(H_Para, Not_H) ~ Ant_treatment + Tree_species + Caterpillar_species,
+                    family = quasibinomial(),
+                    data = ant)
+summary(ant_mdl_hym)
+confint(ant_mdl_hym)
+rsq(ant_mdl_hym, adj = TRUE, type = "v")
+plot(ant_mdl_hym)
+
+ggplot(data = ant, aes(x = Ant_treatment, y = (H_Para/(H_Para + Not_H)))) + 
+  geom_boxplot() + 
+  geom_jitter() + theme_bw()
+
+
+
+```
+
+
+```{r summary_stats, echo = F}
+
+## get summary stats
+
+bird_sum <- bird %>% 
+  select(-Bird_treatment)
+ant_sum <- ant %>% 
+  select(-Ant_treatment)
+
+sum_data <- rbind(bird_sum, ant_sum)
+sum_data %>% 
+  mutate(total_para = sum(Para))
+
+sum(sum_data$Para, na.rm = TRUE)
+sum(sum_data$Not_Para, na.rm = TRUE)
+
+
+```
+
+
+## Session Information
+
+```{r Session_Info, echo = F, comment = ""}
+
+# Add session information to help with reproduceability
+sessionInfo()
+
+
+```
+
+
