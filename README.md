@@ -15,7 +15,7 @@ Markdown descriptions:
 
 Correspondence:
 
-* Nora C Mitchell 
+* Nora C. Mitchell 
   + nora.c.mitchell@gmail.com
 * Riley M. Anderson
   + riley.m.anderson@wsu.edu
